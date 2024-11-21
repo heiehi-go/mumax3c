@@ -98,6 +98,33 @@ def driver_script(driver, system, compute=None, ovf_format="bin4", **kwargs):
             mx3 += f"Xi = {zh_li_term.beta}\n"
             mx3 += "Pol = 1\n"  # Current polarization is 1.
             mx3 += 'J.add(LoadFile("j.ovf"), 1)\n'  # 1 means constant in time.
+            
+        if system.dynamics.get(type=mm.Slonczewski):
+            (slonczewski,) = system.dynamics.get(type=mm.Slonczewski)
+            if isinstance(slonczewski.J, df.Field):
+                j_slonc = slonczewski.J
+            elif isinstance(slonczewski.J, numbers.Real):
+                j_slonc = df.Field(
+                    mesh=system.m.mesh,
+                    nvdim=3,
+                    value=(0.0, 0.0,slonczewski.J),
+                )
+                
+            j_slonc.to_file("j_slonc.ovf", representation=ovf_format)
+            
+            mp = slonczewski.mp
+            mp.to_file("mp.ovf", representation=ovf_format)
+            P = slonczewski.P
+            Lambda = slonczewski.Lambda
+            if isinstance(slonczewski.eps_prime, ts.Descriptor):
+                eps_prime = 0
+            else:
+                eps_prime = slonczewski.eps_prime
+            mx3 += f"Pol = 1{P}\n" 
+            mx3 += f'lambda = {Lambda}\n'
+            mx3 += f'epsilonprime = {eps_prime}\n'
+            mx3 += f'fixedlayer .add(LoadFile("mp.ovf"), 1)\n' # 1 means constant in time
+            mx3 += f'J.add(LoadFile("j_slonc.ovf"), 1)\n'
 
         mx3 += "setsolver(5)\n"
         mx3 += "fixDt = 0\n\n"
